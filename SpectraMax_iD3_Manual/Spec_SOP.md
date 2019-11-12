@@ -10,7 +10,8 @@ Last Revised: 20190913
 <a name="Logging_In"></a> **Logging In**
 1. Turn on the Spec by tapping the yellow power button (lower left corner of the screen platform) with your finger.  Initial startup will take a few minutes.
 1. Select a User Profile to log in
-    1. Admin Pin: 0000
+    1. Silbiger Lab
+    1. Admin (Pin: 0000)
 1. To create a new User Profile, log in with Admin, then select the Maintenance icon (wrench) on the bottom left toolbar, then select Users on the lefthand side.
     1. Select Create New User and type in the User name.
     1. Choose to set a pin or leave the option OFF.
@@ -19,7 +20,7 @@ Last Revised: 20190913
 
 
 
-<a name="Troubleshooting></a> **Troubleshooting**
+<a name="Troubleshooting"></a> **Troubleshooting**
 1. For quick How-To videos, select the Maintenance icon (wrench) on the bottom left toolbar, then select Support.  Here you can watch videos on
     1. [Getting to konw youre new ID series reader](https://www.moleculardevices.com/en/assets/tutorials-videos/br/getting-to-know-your-new-spectramax-id3)
     1. [Personalizing your ID series reader](https://www.moleculardevices.com/en/assets/tutorials-videos/br/personalizing-your-spectramax-id3)
