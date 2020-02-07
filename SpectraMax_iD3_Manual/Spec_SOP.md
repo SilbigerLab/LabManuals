@@ -1,6 +1,6 @@
 # Standard Protocol for the SpectraMax iD3 Multi-Mode Microplate Reader
 
-Original: 20190913
+Original: 20190913  
 Last Revised: 20190913
 
 **Contents**  
