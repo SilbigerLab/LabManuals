@@ -15,3 +15,11 @@
 * Lab laptop, located near the titrator in Magnolia 4109 (Last software update: 9/26/2019)  
 * Yoga field laptop (Last software update: 9/26/2019)  
 * Dr. Silbiger's desktop located in Magnolia 4109A (Last software update: 9/27/2019)  
+
+
+**Instrument Serial Number:** 3867  
+**Mac Address:** 00-13-95-33-55-5E  
+**Instrument Name:** iD3-3867  
+**Firmware Version:** V1.2 b64 12.07.2019  
+**PIC Version:** V1.3 b14 29.11.2016  
+**Software Version:** 1.2 build 243721  
