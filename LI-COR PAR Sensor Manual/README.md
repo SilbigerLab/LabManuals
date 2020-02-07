@@ -1,4 +1,4 @@
-# LI-COR miniPAR Underwater Quantum Sensor Manual and SOP
+LI-COR miniPAR Underwater Quantum Sensor Manual and SOP
 
 [LI-COR miniPAR Logger SOP](miniPAR_Logger_SOP.md)  
 [Instrument Information](System_Information.md)  
