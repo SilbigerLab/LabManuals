@@ -2,4 +2,4 @@
 
 [Spec SOP](Spec_SOP.md)  
 [System Information](System_Information.md)  
-[User Guide](SpectraMax_iD3_User_Guide.pdf)
+[User Guide PDF](SpectraMax_iD3_User_Guide.pdf)
