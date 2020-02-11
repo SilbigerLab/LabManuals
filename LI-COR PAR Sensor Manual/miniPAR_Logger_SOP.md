@@ -27,8 +27,8 @@ pressure housing.
         1. miniPARConcatenate.jar program gathers all the daily files into one CAT.txt file.
         1. Manual.pdf is the manual.
     1. When offloading data, first use miniPARPlot.jar to create a data stamped .txt file.  Then use miniPARConcatenate.jar to concatenate the data into a second .txt file.
-    1. Create a dated folder for these files within /NO NAME/7530-428102 to dump both .txt files.
-    1. Right click each file to "Open With: Excel" and save each file as a .csv file in your desired data drive location (on your computer).
+    1. Once both files have saved into /NO NAME/7530-428102 create a new dated folder for these files within /NO NAME/7530-428102.
+    1. Right click each file to "Open With: Excel" and save each file as a .csv file in your desired data drive location (on your computer, not in the logger's folder).
     1. Once you're done using the logger, right click the NO NAME drive on your computer to Eject the drive.  Once ejected, you may disconnect the logger and safely store it back in the white housing.
     
 1. Keeping the sensor clean to maintain accuracy of readings
