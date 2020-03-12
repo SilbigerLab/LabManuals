@@ -9,11 +9,12 @@ library(ggpmisc)
 # File Names
 ########################
 
-foldername<-'20200310/miniDOT_646496' # folder of the day
+foldername<-'20200310/miniDOT_735719' # folder of the day
+Serial<-735719 # Logger's serial number ID
 filename_cat<-'20200310_Cat.csv' # concatenated data from miniDOT Logger
 Launch<-'2020-03-06 14:55:00' # Maintain date time format "2020-03-04 14:15:00"
 Retrieval<-'2020-03-07 17:02:00' # Maintain date time format "2020-03-04 21:30:00"
-Date <- 20200310 # today's date
+Date <- 20200307 # today's date
 
 #################################################################################
 # DO NOT CHANGE ANYTHING BELOW HERE ----------------------------------
@@ -57,7 +58,7 @@ Concat_Data <- Concat_Data %>%
 View(Concat_Data)
 
 # Create simple csv file
-write_csv(Concat_Data,paste0('miniDOT_Oxygen_Sensors/Data/',foldername,'/',Date,'miniDOTcat.csv'))
+write_csv(Concat_Data,paste0('miniDOT_Oxygen_Sensors/Data/',foldername,'/',Date,'_miniDOT_',Serial,'.csv'))
 
 # Plot the data
 Concat_Data %>% # this is the dataframe
