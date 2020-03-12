@@ -54,10 +54,10 @@ write_csv(Concat_Data,paste0('HOBO_CT_Loggers/Data/',foldername,'/',Date,'_CT_Lo
 
 # Plot the data
 Concat_Data %>% # this is the dataframe
+  ggplot(aes(x= PST, y= Temp_degC))+   #setup plot with x and y data
+  geom_line() #+ #adding lines
+Concat_Data %>% # this is the dataframe
   ggplot(aes(x= PST, y= Salinity_ppt))+   #setup plot with x and y data
   #ggplot(aes(x=PST, y= Temp_degC))+
   geom_line()# + #adding lines
 # scale_y_continuous(sec.axis = sec_axis('Temp_degC', name=derive()))
-Concat_Data %>% # this is the dataframe
-  ggplot(aes(x= PST, y= Temp_degC))+   #setup plot with x and y data
-  geom_line() #+ #adding lines

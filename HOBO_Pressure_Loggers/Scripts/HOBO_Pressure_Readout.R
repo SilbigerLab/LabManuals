@@ -11,8 +11,8 @@ library(ggpmisc)
 
 foldername<-'20200310' # folder of the day
 filename<-'3-7-2020_Depth_20810872.csv' # concatenated data from miniDOT Logger
-Launch<-'2020-03-06 14:55:00' # Maintain date time format "2020-03-04 14:15:00"
-Retrieval<-'2020-03-07 17:00:00' # Maintain date time format "2020-03-04 21:30:00"
+Launch<-'2020-03-06 12:55:00' # Maintain date time format "2020-03-04 14:15:00"
+Retrieval<-'2020-03-07 17:02:00' # Maintain date time format "2020-03-04 21:30:00"
 Date <- 20200310 # today's date
 
 #################################################################################
@@ -44,14 +44,14 @@ Concat_Data <- Concat_Data %>%
 View(Concat_Data)
 
 # Create simple csv file
-write_csv(Concat_Data,paste0('HOBO_Pressure_Loggers/Data/',foldername,'/',Date,'HOBOdepth.csv'))
+write_csv(Concat_Data,paste0('HOBO_Pressure_Loggers/Data/',foldername,'/',Date,'_HOBOdepth.csv'))
 
 # Plot the data
+Concat_Data %>% # this is the dataframe
+  ggplot(aes(x= PST, y= Temp_degC))+   #setup plot with x and y data
+  geom_line() #+ #adding lines
 Concat_Data %>% # this is the dataframe
   ggplot(aes(x= PST, y= -Depth_m))+   #setup plot with x and y data
   #ggplot(aes(x=PST, y= Temp_degC))+
   geom_line()# + #adding lines
- # scale_y_continuous(sec.axis = sec_axis('Temp_degC', name=derive()))
-Concat_Data %>% # this is the dataframe
-  ggplot(aes(x= PST, y= Temp_degC))+   #setup plot with x and y data
-  geom_line() #+ #adding lines
+# scale_y_continuous(sec.axis = sec_axis('Temp_degC', name=derive()))
