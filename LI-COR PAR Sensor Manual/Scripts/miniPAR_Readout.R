@@ -4,34 +4,45 @@ library(lubridate)
 library(ggplot2)
 library(ggpubr)
 library(ggpmisc)
+library(broom)
+library(nls.multstart)
 
 ########################
 # File Names
 ########################
 
-foldername<-'20200211' # folder of the day
-filename_cat<-'20200210-11_Cat.csv' # concatenated data from miniPAR Logger
-filename_plot<-'20200211_Plot.csv' # plot data from miniPAR Logger
-filename_HOBOpendant <- '20200210-11_HOBO.csv' # If calibrating HOBO pendant against LI-COR
-Date <- 20200211
+foldername<-'20200305' # folder of the day
+filename_cat<-'20200305_Cat.csv' # concatenated data from miniPAR Logger
+filename_HOBOpendant <- 'Pendant-2-SN20555868 2020-03-04 16_25_35 -0800.csv' # If calibrating HOBO pendant against LI-COR
+serial<-'sn5868'
+Launch<-'2020-03-02 14:35:00' # Maintain date time format "2020-03-04 14:15:00"
+Retrieval<-'2020-03-04 15:50:00' # Maintain date time format "2020-03-04 21:30:00"
+Date <- 20200305
 
 #################################################################################
 # DO NOT CHANGE ANYTHING BELOW HERE ----------------------------------
 #################################################################################
 
+Launch <- Launch %>%
+  parse_datetime(format = "%Y-%m-%d %H:%M:%S", na = character(),
+                 locale = default_locale(), trim_ws = TRUE)
+Retrieval <- Retrieval %>%
+  parse_datetime(format = "%Y-%m-%d %H:%M:%S", na = character(),
+                 locale = default_locale(), trim_ws = TRUE)
+
 # Tidy Concatenation Data
 Concat_Data <- read_csv(paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/',filename_cat),
-                       col_names = FALSE,
-                       skip=7) #skips first 7 rows containing instrument information
-# Split merged cell into column headings
-# note that all vectors are character type
+                        col_names = FALSE,
+                        skip=7) #skips first 7 rows containing instrument information
+
+
 Concat_Data <- separate(Concat_Data,"X1", into=c("Unix_Timestamp_second","UTC_Date_Time","PST",
                                                  "Battery_volts","Temp_degC","PAR","Ax_g",
-                                                 "Ay_g","Az_g"), sep=",", remove=TRUE)
+                                                 "Ay_g","Az_g"), sep=",", remove=TRUE) # Split merged cell into column headings - note that all vectors are character type
 # Convert PST to date and time vector type
 Concat_Data$PST <- Concat_Data$PST %>%
   parse_datetime(format = "%Y-%m-%d %H:%M:%S", na = character(),
-             locale = default_locale(), trim_ws = TRUE)
+                 locale = default_locale(), trim_ws = TRUE)
 
 # Convert character strings to double number type
 Concat_Data$Battery_volts <- Concat_Data$Battery_volts %>%
@@ -46,29 +57,18 @@ Concat_Data$Ay_g <- Concat_Data$Ay_g %>%
   parse_double(na=c("","NA"),locale = default_locale(), trim_ws = TRUE)
 Concat_Data$Az_g <- Concat_Data$Az_g %>%
   parse_double(na=c("","NA"),locale = default_locale(), trim_ws = TRUE)
+Concat_Data <- Concat_Data %>%
+  filter(between(PST,Launch,Retrieval)) 
 #View(Concat_Data)
-# Create simple csv file
-write_csv(Concat_Data,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/',Date,'_PARcat.csv'))
+
+write_csv(Concat_Data,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/',Date,'_PAR.csv')) # Create simple csv file
 
 
 #################################################################################
-# Tidy Plot Data (Redundant to Concatenation Data)
 
-Plot_Data <- read_csv(paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/',filename_plot),
-                        col_names = FALSE,
-                        skip=3) #skips first 3 rows containing instrument information
-# Split merged cell into column headings
-Plot_Data <- separate(Plot_Data,"X1", into=c("Unix_Timestamp_second","Battery_volts","Temp_degC",
-                                             "PAR","Ax_g","Ay_g","Az_g"), sep=",", remove=TRUE)
-# Write file to csv - redundant to Concat_Data
-### write_csv(Plot_Data,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/',Date,'_PARplot.csv'))
+# Tidy HOBO Pendant data for calibration
 
-
-
-#################################################################################
-# Calibrating HOBO Pendant
-# First bring in HOBO data - assumes file was stored in HOBOmobile app on a phone and shared as a csv file to the computer
-HOBO <- read_csv(paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/HOBOpendant/',filename_HOBOpendant),
+HOBO <- read_csv(paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/HOBOpendant/',filename_HOBOpendant), 
                  skip=2,
                  col_names=TRUE,
                  col_types=list("Button Down"=col_skip(), # skips columns containing logger launch, connection, and stop information
@@ -76,90 +76,86 @@ HOBO <- read_csv(paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/HOBOpendan
                                 "Host Connect"=col_skip(),
                                 "Stopped"=col_skip(),
                                 "EOF"=col_skip())) 
-# Relabel column headings
 HOBO <- HOBO %>%
-  rename(PST=contains("Date"), Temp_degC=contains("Temp"), HOBO_Lux=contains("Intensity"))
-# Drops NA values at the bottom of the data file by using the presence of Temp data as a proxy for logged values to keep
+  rename(PST=contains("Date"), Temp_degC=contains("Temp"), HOBO_Lux=contains("Intensity")) # Relabel column headings
 HOBO <- HOBO %>%
-  filter(!is.na(Temp_degC))
-# Converts to date and time string types
+  filter(!is.na(Temp_degC)) # Drops NA values at the bottom of the data file by using the presence of Temp data as a proxy for logged values to keep
 HOBO$PST <- HOBO$PST %>%
- parse_datetime(format = "%m/%d/%y %H:%M", na = character(),
-           locale = default_locale(), trim_ws = TRUE)
+  parse_datetime(format = "%m/%d/%y %H:%M", na = character(),
+                 locale = default_locale(), trim_ws = TRUE) # Converts to date and time string types
 
-# Convert to SI units 
+#HOBO <- HOBO %>% # Convert to SI units if necessary and also converting lumens to lux to PAR
+ # mutate(Temp_degC = (Temp_degC-32)*5/9, HOBO_Lux = HOBO_Lux*10.7639104*0.0185) # converting lumens to lux to PAR
+# Lux to PAR converstion source: Long, previously Valiela (1984): 1 mmol quanta m-2 s-2 400-700nm = 51.2 Lux, also previously https://www.apogeeinstruments.com/conversion-ppfd-to-lux/
+
 HOBO <- HOBO %>%
-  mutate(
-    Temp_degC = (Temp_degC-32)*5/9,
-    # converting lumens to lux to PAR
-    HOBO_Lux = HOBO_Lux*10.7639104*0.0185
-  )
-# Lux to PAR converstion source: https://www.apogeeinstruments.com/conversion-ppfd-to-lux/
+  filter(between(PST,Launch,Retrieval)) 
 #View(HOBO)
-write_csv(HOBO,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/',Date,'_HOBOpar.csv'))
+write_csv(HOBO,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/HOBO_',serial,'_',Date,'.csv'))
 
 # If bringing in HOBO data from HOBOware on the computer
 # When exporting table data from HOBOware, only click the relevant data (i.e. temp and intensitiy)
- #HOBO <- read_csv(paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/HOBOpendant/',filename_HOBOpendant),
-  #                skip=1,
-   #               col_names=TRUE)
- 
-# Converts to date and time string types
- #HOBO$PST <- HOBO$PST %>%
- # parse_datetime(format = "%m/%d/%y %H:%M", na = character(),
- #           locale = default_locale(), trim_ws = TRUE)
- 
- # Relabel column headings
- #HOBO <- HOBO %>%
-  # rename(PST=contains("Date"), Temp_degC=contains("Temp"), HOBO_Lux=contains("Intensity"))
- # Drops NA values at the bottom of the data file by using the presence of Temp data as a proxy for logged values to keep
- #HOBO <- HOBO %>%
-  # filter(!is.na(Temp_degC))
- 
- 
-# merge the LI-COR and HOBO dataframes
-LICOR_HOBO <- full_join(Concat_Data,HOBO, by="PST")
-# remove the unecessary columns
-LICOR_HOBO <- LICOR_HOBO %>%
-  select(-c(Battery_volts))
-# rename temp columns
-LICOR_HOBO <- LICOR_HOBO %>%
-  rename(Temp_degC_LICOR="Temp_degC.x",Temp_degC_HOBO="Temp_degC.y")
-# Drops NA values where LICOR and HOBO aren't overlapping readings
-LICOR_HOBO <- LICOR_HOBO %>%
-  filter(!is.na(HOBO_Lux),!is.na(PAR))
-#View(LICOR_HOBO)
+# HOBO <- read_csv(paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/HOBOpendant/',filename_HOBOpendant), skip=1, col_names=TRUE)
 
+#HOBO$PST <- HOBO$PST %>%
+# parse_datetime(format = "%m/%d/%y %H:%M", na = character(), locale = default_locale(), trim_ws = TRUE) # Converts to date and time string types
+# HOBO <- HOBO %>% rename(PST=contains("Date"), Temp_degC=contains("Temp"), HOBO_Lux=contains("Intensity")) %>% # Relabel column headings
+                 # filter(!is.na(Temp_degC)) # Drops NA values at the bottom of the data file by using the presence of Temp data as a proxy for logged values to keep
+
+
+#################################################################################
+
+LICOR_HOBO <- full_join(Concat_Data,HOBO, by="PST") # merge the LI-COR and HOBO dataframes
+LICOR_HOBO <- LICOR_HOBO %>%
+  select(-c(Battery_volts)) # remove the unecessary columns
+LICOR_HOBO <- LICOR_HOBO %>%
+  rename(Temp_degC_LICOR="Temp_degC.x",Temp_degC_HOBO="Temp_degC.y") # rename temp columns
+LICOR_HOBO <- LICOR_HOBO %>%
+  filter(!is.na(HOBO_Lux),!is.na(PAR)) # Drops NA values where LICOR and HOBO aren't overlapping readings
+View(LICOR_HOBO)
+write_csv(LICOR_HOBO,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/Licor-Hobo_',serial,'_',Date,'.csv'))
+
+#####################################
+# Plotting and Retrieving fitting constants
+#####################################
 # Calibrating HOBO to LICOR
-# PAR_LICOR = y0 + A1*exp(-HOBO / t1)
+# PAR_LICOR = A*exp(-HOBO / t) + y0
 # PAR_LICOR: PAR data from the LICOR (μmol photons m–2 s–1)
 # HOBO: raw output data (lumens m–2)
-# A1, t1, and y0 are fitting constants
+# A, t, and y0 are fitting constants
 
-x <- LICOR_HOBO$HOBO_Lux
-y <- LICOR_HOBO$PAR
-linear.model <-lm(y ~ x)
-#log.model <-lm(log(PAR) ~ HOBO_Lux, LICOR_HOBO)
-exp.model <-lm(y ~ exp(x))
+myData<-LICOR_HOBO %>%
+  select(PAR,HOBO_Lux) # selecting only the columns for Par and Lux data
 
-#log.model.df <- tibble(x = LICOR_HOBO$PAR,
- #                          y = exp(fitted(log.model)))
+myformula<-PAR~a*exp(-HOBO_Lux/t)+y0 # exponential function
 
-formula <- y ~ exp(x)
-ExpRegPlot <- ggplot(LICOR_HOBO, aes(x=HOBO_Lux, y=PAR)) + 
-  geom_point() +
-  geom_smooth(method="lm", aes(color="Exp Model"), formula= formula,
-              se=FALSE, linetype=1) +
-  # geom_smooth(method="lm", aes(x,y,color="Log Model"), formula=y~x, size=1, linetype=1) +
-  # geom_line(data=log.model.df, aes(x,y,color="Log Model"), size=1, linetype=1) +
-  guides(color = guide_legend("Model Type")) +
-  stat_poly_eq(aes(label =  paste(..eq.label.., ..rr.label..,
-                  sep = "~~italic(\",\")~~")),formula = formula, parse = TRUE)
+y.0<-min(myData$PAR)*0.5 # using y0 as an initial estimate that is something like half the minimum of the observatins of y
+model.0<-lm(log(PAR-y.0)~HOBO_Lux, data=myData)
+start.0<-list(a=exp(coef(model.0)[1]),t=coef(model.0)[2],y0=y.0)
+#model<-nls(myformula, data=myData, start=start.0) # haven't resolved, but still get fitting constant values from ggplot2
+# from https://stats.stackexchange.com/questions/160552/why-is-nls-giving-me-singular-gradient-matrix-at-initial-parameter-estimates
 
-# View plot
-ExpRegPlot
-exp.model
-#linear.model
-#log.model
-#View(ExpRegPlot)
-#summary(ExpRegPlot)
+myPlot<-ggplot(myData, aes(x = HOBO_Lux, y = PAR))+
+  geom_point()+
+  geom_smooth(method="nls",  # add best fit line
+              formula=myformula, # this is an nls argument
+              method.args = start.0, # list(start=c(A=-1, t=-1, y0=0)), # also an nls argument
+              se=FALSE, fullrange = TRUE)+
+  ylab('Licor_PAR')+
+  stat_fit_tidy(method = "nls", #add the values for each model
+                method.args = list(formula = myformula, start=start.0),
+                label.x = "left",
+                label.y = 1.5,
+                mapping = aes(label = paste("a~`=`~", signif(..a_estimate.., digits = 3),
+                                            "%+-%", signif(..a_se.., digits = 2),
+                                            "~~~~t~`=`~", signif(..t_estimate.., digits = 3),
+                                            "%+-%", signif(..t_se.., digits = 2),
+                                            "~~~~y0~`=`~", signif(..y0_estimate.., digits = 3),
+                                            "%+-%", signif(..y0_se.., digits = 2),
+                                            sep = "")),
+                parse = TRUE) +
+  theme_bw() #+
+#  ggsave(path = paste0('LI-COR PAR Sensor Manual/Data/',foldername,), filename= 'Par_Hobo_Plot.png', device = 'png',width = 9, height = 6)
+
+myPlot # plot
+summary(myPlot) # retrieve coefficient values for a, t, and y0
