@@ -1,11 +1,12 @@
 rm(list=ls())
 library(tidyverse)
+library(broom)
 library(lubridate)
 library(ggplot2)
 library(ggpubr)
 library(ggpmisc)
-library(broom)
 library(nls.multstart)
+library(nlstools)
 
 ########################
 # File Names
@@ -14,7 +15,7 @@ library(nls.multstart)
 foldername<-'20200305' # folder of the day
 filename_cat<-'20200305_Cat.csv' # concatenated data from miniPAR Logger
 filename_HOBOpendant <- 'Pendant-2-SN20555868 2020-03-04 16_25_35 -0800.csv' # If calibrating HOBO pendant against LI-COR
-serial<-'sn5868'
+serial<-'sn5868' # last four digits from the Pendant SN ID ex. 'sn5847'
 Launch<-'2020-03-02 14:35:00' # Maintain date time format "2020-03-04 14:15:00"
 Retrieval<-'2020-03-04 15:50:00' # Maintain date time format "2020-03-04 21:30:00"
 Date <- 20200305
@@ -34,8 +35,6 @@ Retrieval <- Retrieval %>%
 Concat_Data <- read_csv(paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/',filename_cat),
                         col_names = FALSE,
                         skip=7) #skips first 7 rows containing instrument information
-
-
 Concat_Data <- separate(Concat_Data,"X1", into=c("Unix_Timestamp_second","UTC_Date_Time","PST",
                                                  "Battery_volts","Temp_degC","PAR","Ax_g",
                                                  "Ay_g","Az_g"), sep=",", remove=TRUE) # Split merged cell into column headings - note that all vectors are character type
@@ -60,14 +59,11 @@ Concat_Data$Az_g <- Concat_Data$Az_g %>%
 Concat_Data <- Concat_Data %>%
   filter(between(PST,Launch,Retrieval)) 
 #View(Concat_Data)
-
 write_csv(Concat_Data,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/',Date,'_PAR.csv')) # Create simple csv file
-
 
 #################################################################################
 
 # Tidy HOBO Pendant data for calibration
-
 HOBO <- read_csv(paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/HOBOpendant/',filename_HOBOpendant), 
                  skip=2,
                  col_names=TRUE,
@@ -80,9 +76,9 @@ HOBO <- HOBO %>%
   rename(PST=contains("Date"), Temp_degC=contains("Temp"), HOBO_Lux=contains("Intensity")) # Relabel column headings
 HOBO <- HOBO %>%
   filter(!is.na(Temp_degC)) # Drops NA values at the bottom of the data file by using the presence of Temp data as a proxy for logged values to keep
-HOBO$PST <- HOBO$PST %>%
-  parse_datetime(format = "%m/%d/%y %H:%M", na = character(),
-                 locale = default_locale(), trim_ws = TRUE) # Converts to date and time string types
+#HOBO$PST <- HOBO$PST %>%
+ # parse_datetime(format = "%m/%d/%y %H:%M", na = character(),
+  #               locale = default_locale(), trim_ws = TRUE) # Converts to date and time string types
 
 #HOBO <- HOBO %>% # Convert to SI units if necessary and also converting lumens to lux to PAR
  # mutate(Temp_degC = (Temp_degC-32)*5/9, HOBO_Lux = HOBO_Lux*10.7639104*0.0185) # converting lumens to lux to PAR
@@ -126,36 +122,46 @@ write_csv(LICOR_HOBO,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/Licor-
 
 myData<-LICOR_HOBO %>%
   select(PAR,HOBO_Lux) # selecting only the columns for Par and Lux data
-
-myformula<-PAR~a*exp(-HOBO_Lux/t)+y0 # exponential function
+myformula<-PAR~A*exp(-HOBO_Lux/t)+y0 # exponential function
+Calibration<-function(A,t,y0,HOBO_Lux){ # create a function containing your fitting constants (A, t, and y0) and the x data (HOBO_Lux) used to estimate PAR
+  eq<-A*exp(-HOBO_Lux/t)+y0
+}
 
 y.0<-min(myData$PAR)*0.5 # using y0 as an initial estimate that is something like half the minimum of the observatins of y
-model.0<-lm(log(PAR-y.0)~HOBO_Lux, data=myData)
-start.0<-list(a=exp(coef(model.0)[1]),t=coef(model.0)[2],y0=y.0)
-#model<-nls(myformula, data=myData, start=start.0) # haven't resolved, but still get fitting constant values from ggplot2
-# from https://stats.stackexchange.com/questions/160552/why-is-nls-giving-me-singular-gradient-matrix-at-initial-parameter-estimates
+model<-nls_multstart(PAR ~ Calibration(A,t,y0,HOBO_Lux), 
+                     data=myData, 
+                     iter = 250,
+                     convergence_count = 100,
+                     start_lower= c(A = -2000, t = 20000, y0 = y.0),
+                     start_upper= c(A = -1, t=30000, y0 = 2000),
+                     lower = c(A = -2000, t = 0, y0 = 0)
+)
+# https://github.com/padpadpadpad/nls.multstart
+# help from https://stats.stackexchange.com/questions/160552/why-is-nls-giving-me-singular-gradient-matrix-at-initial-parameter-estimates
 
 myPlot<-ggplot(myData, aes(x = HOBO_Lux, y = PAR))+
   geom_point()+
-  geom_smooth(method="nls",  # add best fit line
+  geom_smooth(method="nls_multstart",  # add best fit line
               formula=myformula, # this is an nls argument
-              method.args = start.0, # list(start=c(A=-1, t=-1, y0=0)), # also an nls argument
-              se=FALSE, fullrange = TRUE)+
+              method.args = model, # also an nls argument
+              se=FALSE, 
+              fullrange = TRUE)+
   ylab('Licor_PAR')+
-  stat_fit_tidy(method = "nls", #add the values for each model
-                method.args = list(formula = myformula, start=start.0),
+  stat_fit_tidy(method = "nls_multstart", #add the values for each model
+                method.args = model, #list(formula = myformula, start=model),
                 label.x = "left",
                 label.y = 1.5,
-                mapping = aes(label = paste("a~`=`~", signif(..a_estimate.., digits = 3),
-                                            "%+-%", signif(..a_se.., digits = 2),
+                mapping = aes(label = paste("A~`=`~", signif(..A_estimate.., digits = 3),
+                                            "%+-%", signif(..A_se.., digits = 2),
                                             "~~~~t~`=`~", signif(..t_estimate.., digits = 3),
                                             "%+-%", signif(..t_se.., digits = 2),
                                             "~~~~y0~`=`~", signif(..y0_estimate.., digits = 3),
                                             "%+-%", signif(..y0_se.., digits = 2),
                                             sep = "")),
                 parse = TRUE) +
-  theme_bw() #+
-#  ggsave(path = paste0('LI-COR PAR Sensor Manual/Data/',foldername,), filename= 'Par_Hobo_Plot.png', device = 'png',width = 9, height = 6)
+  theme_bw() +
+  ggsave(path = paste0('LI-COR PAR Sensor Manual/Data/',foldername), filename= paste0('Par_Hobo_Plot_',serial,'_',Date,'.png'), device = 'png',width = 9, height = 6)
 
 myPlot # plot
-summary(myPlot) # retrieve coefficient values for a, t, and y0
+# summary(myPlot)
+summary(model) # shows your fitting constant values and standard error for each
