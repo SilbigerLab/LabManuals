@@ -12,13 +12,28 @@ library(nlstools)
 # File Names
 ########################
 
+# Create an output folder in your working folder called 'Output'
+
 foldername<-'20200305' # folder of the day
+output_folder<-'Output' # an output folder you created in your folder of the day
 filename_cat<-'20200305_Cat.csv' # concatenated data from miniPAR Logger
 filename_HOBOpendant <- 'Pendant-2-SN20555868 2020-03-04 16_25_35 -0800.csv' # If calibrating HOBO pendant against LI-COR
 serial<-'sn5868' # last four digits from the Pendant SN ID ex. 'sn5847'
 Launch<-'2020-03-02 14:35:00' # Maintain date time format "2020-03-04 14:15:00"
 Retrieval<-'2020-03-04 15:50:00' # Maintain date time format "2020-03-04 21:30:00"
 Date <- 20200305
+
+#group temp and light data from all Hobo pendant loggers together
+hobo_data <-
+  list.files(path = paste0('LI-COR PAR Sensor Manual/Data/',foldername),pattern = ".csv", full.names = TRUE) %>% # list files in directory following a particular pattern
+  #set_names(.) %>% # get the column names
+  map_dfr(read_csv(), .id = "file.ID") %>% # join all files together in one data frame by file ID
+  group_by(file.ID) 
+
+temp.data$Date.Time<- mdy_hm(temp.data$Date.Time, quiet=FALSE, tz="America/Los_Angeles", truncated=0) #format date and time 
+#View(temp.data)
+
+
 
 #################################################################################
 # DO NOT CHANGE ANYTHING BELOW HERE ----------------------------------
@@ -59,7 +74,7 @@ Concat_Data$Az_g <- Concat_Data$Az_g %>%
 Concat_Data <- Concat_Data %>%
   filter(between(PST,Launch,Retrieval)) 
 #View(Concat_Data)
-write_csv(Concat_Data,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/',Date,'_PAR.csv')) # Create simple csv file
+write_csv(Concat_Data,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/',output_folder,'/',Date,'_PAR.csv')) # Create simple csv file
 
 #################################################################################
 
@@ -87,7 +102,7 @@ HOBO <- HOBO %>%
 HOBO <- HOBO %>%
   filter(between(PST,Launch,Retrieval)) 
 #View(HOBO)
-write_csv(HOBO,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/HOBO_',serial,'_',Date,'.csv'))
+write_csv(HOBO,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/',output_folder,'/HOBO_',serial,'_',Date,'.csv'))
 
 # If bringing in HOBO data from HOBOware on the computer
 # When exporting table data from HOBOware, only click the relevant data (i.e. temp and intensitiy)
@@ -109,7 +124,7 @@ LICOR_HOBO <- LICOR_HOBO %>%
 LICOR_HOBO <- LICOR_HOBO %>%
   filter(!is.na(HOBO_Lux),!is.na(PAR)) # Drops NA values where LICOR and HOBO aren't overlapping readings
 View(LICOR_HOBO)
-write_csv(LICOR_HOBO,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/Licor-Hobo_',serial,'_',Date,'.csv'))
+write_csv(LICOR_HOBO,paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/',output_folder,'/Licor-Hobo_',serial,'_',Date,'.csv'))
 
 #####################################
 # Plotting and Retrieving fitting constants
@@ -160,7 +175,7 @@ myPlot<-ggplot(myData, aes(x = HOBO_Lux, y = PAR))+
                                             sep = "")),
                 parse = TRUE) +
   theme_bw() +
-  ggsave(path = paste0('LI-COR PAR Sensor Manual/Data/',foldername), filename= paste0('Par_Hobo_Plot_',serial,'_',Date,'.png'), device = 'png',width = 9, height = 6)
+  ggsave(path = paste0('LI-COR PAR Sensor Manual/Data/',foldername,'/',output_folder), filename= paste0('Par_Hobo_Plot_',serial,'_',Date,'.png'), device = 'png',width = 9, height = 6)
 
 myPlot # plot
 # summary(myPlot)
